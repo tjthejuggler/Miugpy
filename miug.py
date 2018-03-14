@@ -161,9 +161,9 @@ def locationh_event(timeAve):
             i = int(h, 16)     # convert our hex to an int...
             i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
             #NEW WAY WITH A BUFFER TO TRY OUT
-            #note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((min(0,timeAve-50)/540)*128))] # channel 1, middle C, velocity 112
+            note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int(max(0,((timeAve-50)/540)*128)))] # channel 1, middle C, velocity 112
 #IF THIS SEEMS OFF THEN IT IS PROBABLY BECCAUSE OF THE RESIZING TO 600, THE NUMBERS HERE ARE FOR 640
-            note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((timeAve/640)*128))] # channel 1, middle C, velocity 112
+            #note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((timeAve/600)*128))] # channel 1, middle C, velocity 112
             midiout.send_message(note_on)
 
 
@@ -179,8 +179,8 @@ def locationv_event(timeAve):
             i = int(h, 16)     # convert our hex to an int...
             i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
             #NEW WAY WITH A BUFFER TO TRY OUT
-            #note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((min(0,timeAve-40)/400)*128))] # channel 1, middle C, velocity 112
-            note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((timeAve/480)*128))] # channel 1, middle C, velocity 112
+            note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((max(0,timeAve-40)/400)*128))] # channel 1, middle C, velocity 112
+            #note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((timeAve/480)*128))] # channel 1, middle C, velocity 112
             midiout.send_message(note_on)
 
     #make this into a vertical location, probably want to make the horizontal location how we want it first,
@@ -380,10 +380,6 @@ def start_camera():
 
 
                 #   NEEDS TESTED:
-                #       -locationv
-                #       -new buffer setup on locationh
-                #       -allow user to input the midi command they want to happen in the scrolledtext next to the event name
-                #           -THIS CAN BE TESTED, BUT I THINK IT IS DONE                
                 #   TODO:
                 #       -THINGS THAT WOULD BE GOOD TO GET DONE BEFORE A TUESDAY SHOW(MAYBE MONDAY?):
                 #           -in speed, if i gather the balls(but gather is off), the speed goes wildly slow, fix dat shit
@@ -426,6 +422,8 @@ def start_camera():
                 #       -Levels could be entire sets of events that all come together, for instance you could have a pre song level that just uses
                 #           peaks to call samples, and you could have another level for mid-song that does tempo change and loops and such, and then
                 #           a final level with more samples and whatever for ending the song
+                 # many layered vertical loops could be cool that I could activate by juggling higher or lower. Somehow these loops
+                 #  could be recorded live or they could be premade                
                 
 
 
@@ -493,7 +491,8 @@ def start_camera():
 
                 currently_gathered = gather_event(timeAverageLargestdist,currently_gathered)
                 currently_gathered = ungather_event(timeAverageLargestdist,currently_gathered)            
-                location_event(timeAverageX)
+                locationh_event(timeAverageX)
+                locationv_event(timeAverageY)
                 speed_event(timeAverageLargestdist)
                 peak_event(highestCntX,highestCntY)
           
@@ -620,8 +619,7 @@ del midiout
 
 
 
- # many layered vertical loops could be cool that I could activate by juggling higher or lower. Somehow these loops
- #  could be recorded live or they could be premade
+
 
 
 
