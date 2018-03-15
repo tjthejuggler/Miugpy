@@ -26,6 +26,9 @@ import pyautogui
 import time
 import pyHook
 import pythoncom
+import win32com.client
+
+
 
 ##IF THE REFERNECE TO ONCLICK DOWN IN CAMERA IS BEING USED, THEN THIS STUFF
 ##      WILL HAPPEN, IT WAS MY ATTEMPT AT MAKING A COLOR DROPPPER FOR DETERMING
@@ -66,34 +69,30 @@ import pythoncom
 ##    return True
  
 
-
+#used for sending keypresses
+shell = win32com.client.Dispatch("WScript.Shell")
 
 
 midiout = rtmidi.MidiOut()
 available_ports = midiout.get_ports()
-
-#currently_gathered = 1 # this is temporary until we get a way to do events with an ANN
-
 if available_ports:
     midiout.open_port(1)
 else:
     midiout.open_virtual_port("My virtual output")
 
-
-
-root = Tk() #??????WHAT IS THIS
-root.title("Tk dropdown example")
+root = Tk() 
+root.title("Miug")
 
 # Add a grid
 mainframe = Frame(root)
-mainframe.grid(column=0,row=0, sticky=(N,W,E,S) ) #??????WHAT IS THIS
+mainframe.grid(column=0,row=0, sticky=(N,W,E,S) ) #??????WHAT IS THIS (N,W,E,S)
 mainframe.columnconfigure(0, weight = 1)
 mainframe.rowconfigure(0, weight = 1)
 mainframe.pack(pady = 50, padx = 50)
 
 
 def create_training():
-    print("Choo Choo!")
+    print("Extra button")
 
 
 
@@ -102,23 +101,26 @@ def gather_event(timeAveDist,curGath):
     for line in userscroll.get(1.0,END).splitlines():
         if "Gather" in line:
             #print("gather1")
-            midisig = "0.0n"
-            midisig = line.split(',')[1]
-            if timeAveDist < 5:
-##                print("gather2")
-##                print("curGath"+str(currentlyGathered))
-                if currentlyGathered == 0:
-                    currentlyGathered = 1
-##                    print("gather3")
-                    
-                    if midisig[-1] == 'n': # this checks to see if we
-                        h = '0x90'        # since we are using notes, we change our hex
-                    else:
-                        h = '0xB0'        # this sets the default to CC
-                    i = int(h, 16)     # convert our hex to an int...
-                    i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
-                    note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
-                    midiout.send_message(note_on)
+            if "." in line: #this way we know it is midi
+                midisig = "0.0n"
+                midisig = line.split(',')[1]
+                if timeAveDist < 5:
+    ##                print("gather2")
+    ##                print("curGath"+str(currentlyGathered))
+                    if currentlyGathered == 0:
+                        currentlyGathered = 1
+    ##                    print("gather3")
+                        
+                        if midisig[-1] == 'n': # this checks to see if we
+                            h = '0x90'        # since we are using notes, we change our hex
+                        else:
+                            h = '0xB0'        # this sets the default to CC
+                        i = int(h, 16)     # convert our hex to an int...
+                        i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                        note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                        midiout.send_message(note_on)
+                elif "-" in line:
+                    shell.SendKeys(line[-1])
     return currentlyGathered
 
 def ungather_event(timeAveDist,curGath):
@@ -126,23 +128,26 @@ def ungather_event(timeAveDist,curGath):
     for line in userscroll.get(1.0,END).splitlines():
         if "Ungather" in line:
             #print("ungather1")
-            midisig = "0.0n"
-            midisig = line.split(',')[1]
-            if timeAveDist > 5:
-##                print("ungather1.5")
-##                print("curGath"+str(currentlyGathered))
-                if currentlyGathered == 1:
-                    currentlyGathered = 0
-##                    print("ungather2")
-                    if midisig[-1] == 'n': # this checks to see if we
-                        h = '0x90'        # since we are using notes, we change our hex
-                    else:
-                        h = '0xB0'        # this sets the default to CC
-                    i = int(h, 16)     # convert our hex to an int...
-                    i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
-                    note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
-                    #note_on = [0x90, 0, 112] # channel 1, middle C, velocity 112
-                    midiout.send_message(note_on)
+            if "." in line: #this way we know it is midi
+                midisig = "0.0n"
+                midisig = line.split(',')[1]
+                if timeAveDist > 5:
+    ##                print("ungather1.5")
+    ##                print("curGath"+str(currentlyGathered))
+                    if currentlyGathered == 1:
+                        currentlyGathered = 0
+    ##                    print("ungather2")
+                        if midisig[-1] == 'n': # this checks to see if we
+                            h = '0x90'        # since we are using notes, we change our hex
+                        else:
+                            h = '0xB0'        # this sets the default to CC
+                        i = int(h, 16)     # convert our hex to an int...
+                        i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                        note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                        #note_on = [0x90, 0, 112] # channel 1, middle C, velocity 112
+                        midiout.send_message(note_on)
+            elif "-" in line:
+                shell.SendKeys(line[-1])
     return currentlyGathered
     #note_off = [0xB0, 60, 112] # I think we do not need to do this since we are just
                         # using this for colaboration
@@ -304,7 +309,7 @@ def start_camera():
      #     maybe help: https://stackoverflow.com/questions/7039575/how-to-set-camera-fps-in-opencv-cv-cap-prop-fps-is-a-fake
     #camera.set(cv2.cv2.CAP_PROP_FPS, 60)
 
-    print(camera.get(cv2.cv2.CAP_PROP_FPS))
+    #print(camera.get(cv2.cv2.CAP_PROP_FPS))
 
     # this does get our dimensions though: 640,480
     ##        print(camera.get(3))  # float
@@ -378,53 +383,6 @@ def start_camera():
                 centerList.append(center) #we are keeping track of all the centers coordinates so we can find the largest
                                           #   distance between 2 of the contours
 
-
-                #   NEEDS TESTED:
-                #   TODO:
-                #       -THINGS THAT WOULD BE GOOD TO GET DONE BEFORE A TUESDAY SHOW(MAYBE MONDAY?):
-                #           -in speed, if i gather the balls(but gather is off), the speed goes wildly slow, fix dat shit
-                #           -put a buffer on either side of location so that can hang out on either side and have it be
-                #              the absolute on the crossfader
-                #       -allow for keypresses as well as midi, -k could be used for the 'k' keypress
-                #       -look for/follow any advice in the andrei messages
-                #           -it looks like this is ust switching out deque for my current memory system
-                #       -operation color selecter
-                #           -MIGHT NOT BE WORTH IT TO POUR TOO MUCH TIME INTO THIS SINCE IT PROBABLY WONT BE NEEDED IN
-                #               EVENTUAL PROJECT
-                #           -there is a mess of commented out stuff that is all related to my attempts up above, that could be cleaned up
-                #           -if i really want to get this, then i should start in a fresh program and get it working there first
-                #           -then i can share my uncluttered attempts with A&G
-                #       -figure out if the FPS can be increased, there is a url above that may help, just search FPS
-                #       -SLIGHTLY RELATED,
-                #           -I could make some cool time delayed tracers and such to make designs that are created by the balls
-                #           -maybe go fix that formic timer over in android studio
-                #           -there may be some cool games that could be made, both by using things you must avoid or get
-                #               on the screen, or also just audio stuff, you hear a sound and you must remake that sound
-                #               by juggling in the right place
-
-
-                #   NOTES:
-                #       -there is the issue of activating/deactivating events. This can be done based on time since the begining of the session,
-                #           it could be nice if it could be based on the timestamp of a song in vurtualDJ, that would require getting info
-                #           from virtual dj(Maybe not, if everything done to the song was kept track of in the python code then the
-                #           timestamp of the song could be known at all times.
-                #       -the ANN events replace the current events, there is still second layer stuff to find a good way to deal with.
-                #           For instance, an event could temporarily make another event active. A swirl could then make the height hook
-                #           up to the volume for the next 10 seconds. What should the user interface be to create these combinations?
-                #           Hey! Is it possible that there is no need for this, could the ANN just be fed a bunch of different swirl/height
-                #           for the next 10 seconds. The issue I see with this is the part of setting the volume for those 10 seconds that the
-                #           user would be hearing the change if the setup was such that another event type was activated(vertical location-volume).
-                #           If the ANN is just looking for the height 10 seconds after a swirl, then it wont be giving that volume change
-                #           to get it where you want it.
-                #       -like the comment above, another way to activate/deactivate events could be through some sort of mission control,
-                #           a mode you go into that then has different events that can easily be selected, like you do a swirl then whichever
-                #           part of the screen you hang out in for more than a couple seconds activates a certain event or 'level'(see next comment)
-                #       -Levels could be entire sets of events that all come together, for instance you could have a pre song level that just uses
-                #           peaks to call samples, and you could have another level for mid-song that does tempo change and loops and such, and then
-                #           a final level with more samples and whatever for ending the song
-                 # many layered vertical loops could be cool that I could activate by juggling higher or lower. Somehow these loops
-                 #  could be recorded live or they could be premade                
-                
 
 
                 # only proceed if the radius meets a minimum size
@@ -617,7 +575,49 @@ del midiout
  
  
 
+                #   NEEDS TESTED:
+                #   TODO:
+                #       -in speed, if i gather the balls(but gather is off), the speed goes wildly slow, fix that
+                #       -look for/follow any advice in the andrei messages
+                #           -it looks like this is ust switching out deque for my current memory system
+                #       -operation color selecter
+                #           -MIGHT NOT BE WORTH IT TO POUR TOO MUCH TIME INTO THIS SINCE IT PROBABLY WONT BE NEEDED IN
+                #               EVENTUAL PROJECT
+                #           -there is a mess of commented out stuff that is all related to my attempts up above, that could be cleaned up
+                #           -if i really want to get this, then i should start in a fresh program and get it working there first
+                #           -then i can share my uncluttered attempts with A&G
+                #       -figure out if the FPS can be increased, here is a url above that may help
+                #           https://stackoverflow.com/questions/7039575/how-to-set-camera-fps-in-opencv-cv-cap-prop-fps-is-a-fake
+                #       -SLIGHTLY RELATED,
+                #           -I could make some cool time delayed tracers and such to make designs that are created by the balls
+                #           -maybe go fix that formic timer over in android studio
+                #           -there may be some cool games that could be made, both by using things you must avoid or get
+                #               on the screen, or also just audio stuff, you hear a sound and you must remake that sound
+                #               by juggling in the right place
+                #                   -I think Joe Marshall had a game like that
 
+
+                #   NOTES:
+                #       -there is the issue of activating/deactivating events. This can be done based on time since the begining of the session,
+                #           it could be nice if it could be based on the timestamp of a song in vurtualDJ, that would require getting info
+                #           from virtual dj(Maybe not, if everything done to the song was kept track of in the python code then the
+                #           timestamp of the song could be known at all times.
+                #       -the ANN events replace the current events, there is still second layer stuff to find a good way to deal with.
+                #           For instance, an event could temporarily make another event active. A swirl could then make the height hook
+                #           up to the volume for the next 10 seconds. What should the user interface be to create these combinations?
+                #           Hey! Is it possible that there is no need for this, could the ANN just be fed a bunch of different swirl/height
+                #           for the next 10 seconds. The issue I see with this is the part of setting the volume for those 10 seconds that the
+                #           user would be hearing the change if the setup was such that another event type was activated(vertical location-volume).
+                #           If the ANN is just looking for the height 10 seconds after a swirl, then it wont be giving that volume change
+                #           to get it where you want it.
+                #       -like the comment above, another way to activate/deactivate events could be through some sort of mission control,
+                #           a mode you go into that then has different events that can easily be selected, like you do a swirl then whichever
+                #           part of the screen you hang out in for more than a couple seconds activates a certain event or 'level'(see next comment)
+                #       -Levels could be entire sets of events that all come together, for instance you could have a pre song level that just uses
+                #           peaks to call samples, and you could have another level for mid-song that does tempo change and loops and such, and then
+                #           a final level with more samples and whatever for ending the song
+                 # many layered vertical loops could be cool that I could activate by juggling higher or lower. Somehow these loops
+                 #  could be recorded live or they could be premade               
 
 
 
