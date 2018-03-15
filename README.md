@@ -1,19 +1,19 @@
 Miug allows the user to send midi signals or keypresses based on what they do with juggling balls.
 
 Required software:
-	Music software that can be controlled with midi or keypresses (VirtualDJ)
-	https://www.virtualdj.com/download/
+
+Music software that can be controlled with midi or keypresses, for example, VirtualDJ - https://www.virtualdj.com/download/
 	
-	Loopbe1 (midi only) http://www.nerds.de/en/loopbe1.html 
+Loopbe1 (midi only) - http://www.nerds.de/en/loopbe1.html 
 
 Setup:
 
-	Keypress - In the preferences of your music software, associate a keypresses to the actions you wish to you, 
+Keypress - In the preferences of your music software, associate a keypresses to the actions you wish to you, 
 	for instance Q:pause, and P:play. Then, in Miug use the following format to indicate which event type you want 
 	associated to which key: EventType,-KEY (examples: Gather,-Q or Ungather,-P). Note, only Gather and Ungather 
 	are currently usable with keypresses.
   
-	MIDI - First install the free Loopbe1 software and make sure it is running. Next, open both Miug and whatever
+MIDI - First install the free Loopbe1 software and make sure it is running. Next, open both Miug and whatever
 	music software you are using. In the preferences of your music software find the 'controllers' or 'midi' section
 	and select Loopbe. Now you must make a mapping between a midi signal and an action in your music software. In 
 	order to do this, go to the bottom right corner of Miug, and select a number from the first dropdown, the one with
