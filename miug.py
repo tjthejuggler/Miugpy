@@ -27,6 +27,8 @@ import time
 import pyHook
 import pythoncom
 import win32com.client
+from tkinter.filedialog import askopenfilename
+
 
 
 
@@ -330,13 +332,24 @@ def mouse_click(event, x, y, flags, param):
 		# the cropping operation is finished
         refPt.append((x, y))
         cropping = False
- 
-
+videoname = "none"
+useVideo = False
+def video_dialog():
+    global videoName, useVideo
+    useVideo = True
+    #tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
+    videoName = askopenfilename()
+    run_camera()
+    
 
 def start_camera():
-
+    global useVideo
+    useVideo = False
+    run_camera()
+    
+def run_camera():
     	# grab references to the global variables
-    global refPt, cropping
+    global refPt, cropping, videoName, useVideo
 
 #THIS WAS USED IN AN ATTEMPT TO MAKE A COLOR DROPPER FOR DETERMINING TRACKING COLOR
 ##    global upper
@@ -378,12 +391,12 @@ def start_camera():
      
     # if a video path was not supplied, grab the reference
     # to the webcam
-    if not args.get("video", False):
-        camera = cv2.VideoCapture(0)
+    if useVideo:
+        camera = cv2.VideoCapture(videoName)
      
     # otherwise, grab a reference to the video file
     else:
-        camera = cv2.VideoCapture(args["video"])
+        camera = cv2.VideoCapture(0)
 
     #----------------------FPS STUFF------------------
      # this doesnt actually seem to be changing the FPS, or checking it either
@@ -408,17 +421,23 @@ def start_camera():
     timeAverageR = 0
     currently_gathered = 1
 
+
+
     while True: #this is the loop that shows us the video and trackers
 
         (grabbed, frame) = camera.read() # grab the current frame
 
+##        print(camera.get(cv2.CAP_PROP_FRAME_WIDTH))   # float
+##        print(camera.get(cv2.CAP_PROP_FRAME_HEIGHT)) # float
         
         if args.get("video") and not grabbed:# if we are viewing a video and we did not grab a frame,
             break                            # then we have reached the end of the video
+
                 
 
          
-        frame = imutils.resize(frame, width=600) # resize the frame, 
+        frame = imutils.resize(frame, width=600) # resize the frame,
+        #frame = imutils.resize(frame, height=480) # resize the frame,
         # blurred = cv2.GaussianBlur(frame, (11, 11), 0)  # blur it,
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #and convert it to the HSV color space
 
@@ -592,7 +611,10 @@ def start_camera():
 
         # show the frame to our screen
         cv2.imshow("Frame", frame)
-        key = cv2.waitKey(1) & 0xFF
+        if useVideo:
+            key = cv2.waitKey(1) & 0xFF
+        else:
+            key = cv2.waitKey(1) & 0xFF
         cv2.setMouseCallback('Frame',mouse_click)
 
         #if the webcam X is clicked, stop the loop
@@ -652,10 +674,16 @@ def load_everything():
 
     
 button = ttk.Button(mainframe, 
-                   text="Start", 
+                   text="Webcam", 
                    fg="red",
                    command=start_camera)
-button.grid(row = 1, column = 1, padx=10, pady=10)
+button.grid(row = 1, column = 1)
+
+button = ttk.Button(mainframe, 
+                   text="Video", 
+                   fg="red",
+                   command=video_dialog)
+button.grid(row = 1, column = 2)
 
 
 button2 = ttk.Button(mainframe, 
