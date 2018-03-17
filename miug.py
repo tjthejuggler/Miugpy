@@ -91,10 +91,6 @@ mainframe.rowconfigure(0, weight = 1)
 mainframe.pack(pady = 50, padx = 50)
 
 
-def create_training():
-    print("Extra button")
-
-
 
 def gather_event(timeAveDist,curGath):
     currentlyGathered = curGath
@@ -122,6 +118,10 @@ def gather_event(timeAveDist,curGath):
                 elif "-" in line:
                     shell.SendKeys(line[-1])
     return currentlyGathered
+
+#def hold_event(highX,highY):
+    #this may work just by checking to see if there was a tracker consistently in the same section of the upper part of the screen for a
+    #   certain number of frames. We could use 3 sections like, left, middle, right
 
 def ungather_event(timeAveDist,curGath):
     currentlyGathered = curGath
@@ -254,8 +254,89 @@ def peak_event(highX,highY):
 ##        image_mask = cv2.inRange(image_hsv,lower,upper)
 ##        #cv2.imshow("mask",image_mask)
 ##        return (lower, upper)
+arrivedInSquare = [0]*100 
+mostRecentSquare = [0]*100 
+def square_event(ballX, ballY): #the current quare format in the scrolledText is:Square#,midi,min time between triggers, required time to trigger
+    for line in userscroll.get(1.0,END).splitlines():     #Example: Square0,0.5n,500,0 - can be thrown through square and only send 1 signal
+                                                          #Example: Square0,0.5n,500,600 - can be held in a square to cause trigger, but
+                                                                    #throwing through the square wont cause a trigger
+        r=0
+        while r < int(len(refPt)/2):
+            if str("Square"+str(r)) in line:
+                if ballX > refPt[r*2][0]:
+                    if ballX < refPt[(r*2)+1][0]:
+                        if ballY > refPt[r*2][1]:
+                            if ballY < refPt[(r*2)+1][1]:
+                                midisig = "0.0n"
+                                midisig = line.split(',')[1]
+                                millisSinceSquare = int(round(time.time() * 1000)) - mostRecentSquare[r]
+                                if millisSinceSquare > int(''.join(filter(str.isdigit, line.split(",")[2]))):
+                                    if arrivedInSquare[r] > 1:
+                                        if int(round(time.time() * 1000)) - arrivedInSquare[r] > int(''.join(filter(str.isdigit, line.split(",")[3]))):
+                                            if midisig[-1] == 'n': # this checks to see if we
+                                                h = '0x90'        # since we are using notes, we change our hex
+                                            else:
+                                                h = '0xB0'       # this sets the default to CC
+                                            i = int(h, 16)     # convert our hex to an int...
+                                            i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                                            mostRecentSquare[r] = int(round(time.time() * 1000))
+                                            note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                                            midiout.send_message(note_on)
+                                            arrivedInSquare[r] = 0
+                                        else:
+                                            print("arrivedInSquare="+str(int(round(time.time() * 1000)) - arrivedInSquare[r]))
+
+                                    else:
+                                        arrivedInSquare[r] = int(round(time.time() * 1000))
+                                else:
+                                    arrivedInSquare[r] = 0                                        
+                            else:
+                                arrivedInSquare[r] = 0
+                        else:
+                            arrivedInSquare[r] = 0
+                    else:
+                        arrivedInSquare[r] = 0
+                else:
+                    arrivedInSquare[r] = 0
+            r=r+1
+                    
+
+ 
+# initialize the list of reference points and boolean indicating
+# whether cropping is being performed or not
+refPt = []
+cropping = False
+ 
+def mouse_click(event, x, y, flags, param):
+	# grab references to the global variables
+    global refPt, cropping
+    if event == cv2.EVENT_RBUTTONDOWN:
+        refPt.clear()
+
+	# if the left mouse button was clicked, record the starting
+	# (x, y) coordinates and indicate that cropping is being
+	# performed
+    if event == cv2.EVENT_LBUTTONDOWN:
+        if len(refPt) == 0:
+            refPt = [(x, y)]
+            cropping = True
+        else:
+            refPt.append((x, y))
+            cropping = True            
+ 
+	# check to see if the left mouse button was released
+    elif event == cv2.EVENT_LBUTTONUP:
+		# record the ending (x, y) coordinates and indicate that
+		# the cropping operation is finished
+        refPt.append((x, y))
+        cropping = False
+ 
+
 
 def start_camera():
+
+    	# grab references to the global variables
+    global refPt, cropping
 
 #THIS WAS USED IN AN ATTEMPT TO MAKE A COLOR DROPPER FOR DETERMINING TRACKING COLOR
 ##    global upper
@@ -291,8 +372,8 @@ def start_camera():
 ##    upper = (64, 255, 255)
 
     #white
-    lower = (0, 0, 100)
-    upper = (50, 50, 255)
+    lower = (0, 0, 175)
+    upper = (0, 0, 255)
     pts = deque(maxlen=args["buffer"])
      
     # if a video path was not supplied, grab the reference
@@ -363,6 +444,9 @@ def start_camera():
                 cv2.CHAIN_APPROX_SIMPLE)[-2]
         center = None
         centerList = []
+        
+        
+
 
         # only proceed if at least one contour was found
         if len(cnts) > 0:
@@ -397,6 +481,7 @@ def start_camera():
                         highestCntY = int(y)
                         highestCntX = int(x)
                     cntcount = cntcount + 1
+                    square_event(int(x), int(y))
                     if cntcount > 2:
                         break
                     
@@ -461,18 +546,54 @@ def start_camera():
                 # if either of the tracked points are None, ignore
                 # them
             if pts[i - 1] is None or pts[i] is None:
-                        continue
+                continue
 
             # otherwise, compute the thickness of the line and
             # draw the connecting lines
 ##            thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
 ##            cv2.line(frame, pts[i - 1], pts[i], (255, 255, 255), thickness)
 
+		# draw a rectangle around the region of interest
 
+        r = 0#this draws our squares for square_event()
+        while r < int(len(refPt)/2):
+            averRefX = (refPt[r*2][0]+refPt[(r*2)+1][0])/2#gets the center of our square to put
+            averRefY = (refPt[r*2][1]+refPt[(r*2)+1][1])/2#our number
+            #color = colorsys.hsv_to_rgb(0, 0, 0)
+            color = tuple(int(x * 255) for x in colorsys.hsv_to_rgb(r*.1,1,.5))
+            cv2.rectangle(frame, refPt[r*2], refPt[(r*2)+1], color, 2)
+            cv2.putText(frame,str(r),(int(averRefX),int(averRefY)),cv2.FONT_HERSHEY_SIMPLEX,1,color,2)
+            r=r+1
+
+
+#-------
+
+
+## 
+##	# if the left mouse button was clicked, record the starting
+##	# (x, y) coordinates and indicate that cropping is being
+##	# performed
+##        if event == cv2.EVENT_LBUTTONDOWN:
+##            refPt = [(x, y)]
+##            cropping = True
+## 
+##	# check to see if the left mouse button was released
+##        elif event == cv2.EVENT_LBUTTONUP:
+##		# record the ending (x, y) coordinates and indicate that
+##		# the cropping operation is finished
+##            refPt.append((x, y))
+##            cropping = False
+## 
+##		# draw a rectangle around the region of interest
+##            cv2.rectangle(image, refPt[0], refPt[1], (0, 255, 0), 2)
+            #----ss-----
         
+
+
         # show the frame to our screen
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1) & 0xFF
+        cv2.setMouseCallback('Frame',mouse_click)
 
         #if the webcam X is clicked, stop the loop
         if cv2.getWindowProperty('Frame', 0) == -1:
@@ -486,21 +607,10 @@ def start_camera():
     cv2.destroyAllWindows()
 
 
-button = ttk.Button(mainframe, 
-                   text="Start", 
-                   fg="red",
-                   command=start_camera)
-button.grid(row = 1, column = 1, padx=10, pady=10)
 
 
-button2 = ttk.Button(mainframe, 
-                   text="Train", 
-                   fg="blue",
-                   command=create_training)
-button2.grid(row = 1, column = 2)
-
-##userInput = ttk.Entry(mainframe)
-##userInput.grid(row=1, column=6, padx=20, pady=20)
+saveName = ttk.Entry(mainframe)
+saveName.grid(row=2, column=1, padx=20, pady=20)
 
 userscroll = ScrolledText(
     master = mainframe,
@@ -510,6 +620,57 @@ userscroll = ScrolledText(
 )
 userscroll.grid(row=1, column=7, padx=30,pady=30)
 userscroll.insert(ttk.INSERT,str("Gather,0.1n\nUngather,0.0n\nLocationh,0.0c\nLocationv,0.0c\nSpeed,0.1c\nPeak,0.1n"))
+
+def save_everything():
+    f = open(saveName.get()+".txt","w+")
+    f.write(userscroll.get(1.0, END))
+
+    g = open(saveName.get()+"sqr.txt","w+")
+    for i in range(len(refPt)):
+        g.write(str(refPt[i])+"\n")
+
+def load_everything():
+    global refPt
+    f = open(saveName.get()+".txt","r+")
+    userscroll.delete(1.0, END)
+    userscroll.insert(ttk.INSERT,f.read())
+
+    #g = open(saveName.get()+"sqr.txt","w+")
+    refPt = [(0, 0)]
+    refPt.clear()
+    h=0
+    with open(saveName.get()+"sqr.txt","r+") as g:
+        for line in g:
+            if h == 0:
+                print(line.split(",")[0])
+                refPt = [(int(''.join(filter(str.isdigit, line.split(",")[0]))),int(''.join(filter(str.isdigit, line.split(",")[1]))))]
+                #refPt = [int(filter(str.isdigit, [line].split(",")[0]),int(filter(str.isdigit, [line].split(",")[1])]
+                h=h+1
+            else:
+                refPt.append((int(''.join(filter(str.isdigit, line.split(",")[0]))),int(''.join(filter(str.isdigit, line.split(",")[1])))))
+                h=h+1    
+
+    
+button = ttk.Button(mainframe, 
+                   text="Start", 
+                   fg="red",
+                   command=start_camera)
+button.grid(row = 1, column = 1, padx=10, pady=10)
+
+
+button2 = ttk.Button(mainframe, 
+                   text="Save", 
+                   fg="blue",
+                   command=save_everything)
+button2.grid(row = 2, column = 2)
+
+
+button2 = ttk.Button(mainframe, 
+                   text="Load", 
+                   fg="green",
+                   command=load_everything)
+button2.grid(row = 2, column = 3)
+
 
 #LOOK INTO AUTOHOTKEY
 
@@ -538,6 +699,8 @@ popupMenu.grid(row = 12, column = 9)
 popupMenu = OptionMenu(mainframe, miditypevar, *miditypevarChoices)
 Label(mainframe, text="type").grid(row = 11, column = 10)
 popupMenu.grid(row = 12, column =10)
+
+
 
 
 # on change dropdown value
@@ -573,14 +736,16 @@ miditypevar.trace('w', change_dropdown)
 root.mainloop()
 del midiout
  
- 
+                #NEEDS TESTED:
+                #   -does Square_event work with keypresses?
 
-                #   NEEDS TESTED:
+
                 #   TODO:
+                #       -work on getting tracking a bit better, even if it doesnt have a color dropper
                 #       -in speed, if i gather the balls(but gather is off), the speed goes wildly slow, fix that
                 #       -look for/follow any advice in the andrei messages
                 #           -it looks like this is ust switching out deque for my current memory system
-                #       -operation color selecter
+                #       -operation color dropper
                 #           -MIGHT NOT BE WORTH IT TO POUR TOO MUCH TIME INTO THIS SINCE IT PROBABLY WONT BE NEEDED IN
                 #               EVENTUAL PROJECT
                 #           -there is a mess of commented out stuff that is all related to my attempts up above, that could be cleaned up
@@ -588,13 +753,30 @@ del midiout
                 #           -then i can share my uncluttered attempts with A&G
                 #       -figure out if the FPS can be increased, here is a url above that may help
                 #           https://stackoverflow.com/questions/7039575/how-to-set-camera-fps-in-opencv-cv-cap-prop-fps-is-a-fake
-                #       -SLIGHTLY RELATED,
+                #       -if each event in the scrolledtext had a number before it, then that number could be referenced
+                #           by other actions instead of midi or note, they turn another action on or off, and also on
+                #           for a certain amount of time
+                
+                #FOR SQUARE_EVENT:
+                #make a required amount of time in order to trigger a square,
+                #       this will be more useful once we get better tracking set up, even with the stuttery
+                #       tracking we could do something like 90% of the frames in the last 5 seconds must have had
+                #       something in that square
+                #           also, once we get better tracking maybe we will want to do something like
+                #           requiring a certain amount of time completely out of the square
+                #it would be cool if the square got more and more filled or something to show that it is being selected, maybe the
+                #   square walls could get thicker and thicker like in processing miug's mission control
+                
+                #   SLIGHTLY RELATED:
                 #           -I could make some cool time delayed tracers and such to make designs that are created by the balls
                 #           -maybe go fix that formic timer over in android studio
                 #           -there may be some cool games that could be made, both by using things you must avoid or get
                 #               on the screen, or also just audio stuff, you hear a sound and you must remake that sound
                 #               by juggling in the right place
                 #                   -I think Joe Marshall had a game like that
+
+
+
 
 
                 #   NOTES:
@@ -619,6 +801,11 @@ del midiout
                  # many layered vertical loops could be cool that I could activate by juggling higher or lower. Somehow these loops
                  #  could be recorded live or they could be premade               
 
+                #ON THE SUBJECT OF AN ANN CONTROLLING SLIDERS:
+                 #      -if it is trained that a gather on the right immediately followed by moving the gather to the far left of the screen
+                 #          is volume 100%, and a gather on the right that doesnt move at all is volume 0%, and it is also taught some of the
+                 #          places in between as certain %s, it seems like it should be able to figure out the other % roughly by combining
+                 #          its liklihoods that it is at those various places.
 
 
 
