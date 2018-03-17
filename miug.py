@@ -612,7 +612,7 @@ def run_camera():
         # show the frame to our screen
         cv2.imshow("Frame", frame)
         if useVideo:
-            key = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(50) & 0xFF
         else:
             key = cv2.waitKey(1) & 0xFF
         cv2.setMouseCallback('Frame',mouse_click)
