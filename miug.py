@@ -30,51 +30,10 @@ import win32com.client
 from tkinter.filedialog import askopenfilename
 
 
-
-
-##IF THE REFERNECE TO ONCLICK DOWN IN CAMERA IS BEING USED, THEN THIS STUFF
-##      WILL HAPPEN, IT WAS MY ATTEMPT AT MAKING A COLOR DROPPPER FOR DETERMING
-##      THE CV COLOR TRACK RANGE. DIDNT WORK, THE COLORS PICKED FROM THE DROPPER
-##      JUST DONT AT ALL MATCH UP WITH THTE RANGE THAT WOULD BE NECESSARY TO IDENTIFY THAT COLOR
-##    #bright green
-##lower = (29, 86, 6)
-##upper = (64, 255, 255)
-##
-##def onclick(event):
-##    global upper
-##    global lower
-##    print("lll")
-##    x, y = pyautogui.position()
-##    pixelColor = pyautogui.screenshot().getpixel((x, y))
-##    ss = 'X: ' + str(x).rjust(4) + ' Y: ' + str(y).rjust(4)
-##    ss += ' RGB: (' + str(pixelColor[0]).rjust(3)
-##    ss += ', ' + str(pixelColor[1]).rjust(3)
-##    ss += ', ' + str(pixelColor[2]).rjust(3) + ')'
-##    print(ss)
-##    #pixel = image_hsv[y,x]
-##    colorsys.rgb_to_hsv(pixelColor[0], pixelColor[1], pixelColor[2])
-####    lowerColor = np.uint8([[[0, 0, 0]]])
-####    upperColor = np.uint8([[[74, 74, 83]]])
-##    hsv_lower = cv2.cvtColor(lower, cv2.COLOR_BGR2HSV)
-##    hsv_upper = cv2.cvtColor(upper, cv2.COLOR_BGR2HSV)
-##    #you might want to adjust the ranges(+-10, etc):
-##    upper =  np.array([hsv_upper[0] + 20, 255, 255])
-##    lower =  np.array([max(1,hsv_lower[0] - 20), max(1,hsv_lower[1] - 10), max(1,hsv_lower[2] - 40)])
-##    print("upper!!!!!"+str(upper))
-##    print("lower!!!!!"+str(lower))
-##    print(lower, upper)
-####    print("rrrrr")
-##    #image_mask = cv2.inRange(image_hsv,lower,upper)
-##    #cv2.imshow("mask",image_mask)
-##    #return (lower, upper)
-####    print(surface.get_at(pygame.mouse.get_pos()))
-##    return True
- 
-
 #used for sending keypresses
 shell = win32com.client.Dispatch("WScript.Shell")
 
-
+#midi stuff
 midiout = rtmidi.MidiOut()
 available_ports = midiout.get_ports()
 if available_ports:
@@ -95,6 +54,7 @@ mainframe.pack(pady = 50, padx = 50)
 
 
 def gather_event(timeAveDist,curGath):
+    global boundingBoxArea, boundingBoxAreaAverage
     currentlyGathered = curGath
     for line in userscroll.get(1.0,END).splitlines():
         if "Gather" in line:
@@ -102,23 +62,26 @@ def gather_event(timeAveDist,curGath):
             if "." in line: #this way we know it is midi
                 midisig = "0.0n"
                 midisig = line.split(',')[1]
-                if timeAveDist < 5:
-    ##                print("gather2")
-    ##                print("curGath"+str(currentlyGathered))
-                    if currentlyGathered == 0:
-                        currentlyGathered = 1
-    ##                    print("gather3")
-                        
-                        if midisig[-1] == 'n': # this checks to see if we
-                            h = '0x90'        # since we are using notes, we change our hex
-                        else:
-                            h = '0xB0'        # this sets the default to CC
-                        i = int(h, 16)     # convert our hex to an int...
-                        i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
-                        note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
-                        midiout.send_message(note_on)
-                elif "-" in line:
-                    shell.SendKeys(line[-1])
+                #if timeAveDist < 5:
+                if len(boundingBoxArea) > 0:#IT TAKES LIKE A SECOND FOR GATHER/UNGATHER TO TRIGGER AND I DO NOT KNOW WHY
+                    if abs(boundingBoxAreaAverage - boundingBoxArea[-1]) < boundingBoxAreaAverage/1.2 or boundingBoxArea[-1] < 1:
+
+                        #print("boundingBoxAreaAverage"+str(boundingBoxAreaAverage))
+                        #print("boundingBoxArea[-1]"+str(boundingBoxArea[-1]))
+                        if currentlyGathered == 0:
+                            currentlyGathered = 1
+        ##                    print("gather3")
+                            
+                            if midisig[-1] == 'n': # this checks to see if we
+                                h = '0x90'        # since we are using notes, we change our hex
+                            else:
+                                h = '0xB0'        # this sets the default to CC
+                            i = int(h, 16)     # convert our hex to an int...
+                            i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                            note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                            midiout.send_message(note_on)
+            elif "-" in line:
+                shell.SendKeys(line[-1])
     return currentlyGathered
 
 #def hold_event(highX,highY):
@@ -133,21 +96,23 @@ def ungather_event(timeAveDist,curGath):
             if "." in line: #this way we know it is midi
                 midisig = "0.0n"
                 midisig = line.split(',')[1]
-                if timeAveDist > 5:
-    ##                print("ungather1.5")
-    ##                print("curGath"+str(currentlyGathered))
-                    if currentlyGathered == 1:
-                        currentlyGathered = 0
-    ##                    print("ungather2")
-                        if midisig[-1] == 'n': # this checks to see if we
-                            h = '0x90'        # since we are using notes, we change our hex
-                        else:
-                            h = '0xB0'        # this sets the default to CC
-                        i = int(h, 16)     # convert our hex to an int...
-                        i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
-                        note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
-                        #note_on = [0x90, 0, 112] # channel 1, middle C, velocity 112
-                        midiout.send_message(note_on)
+                if len(boundingBoxArea) > 0:                
+                    if abs(boundingBoxAreaAverage - boundingBoxArea[-1]) > boundingBoxAreaAverage/2 or boundingBoxArea[-1] > 29:
+                    #if timeAveDist > 5:
+        ##                print("ungather1.5")
+        ##                print("curGath"+str(currentlyGathered))
+                        if currentlyGathered == 1:
+                            currentlyGathered = 0
+        ##                    print("ungather2")
+                            if midisig[-1] == 'n': # this checks to see if we
+                                h = '0x90'        # since we are using notes, we change our hex
+                            else:
+                                h = '0xB0'        # this sets the default to CC
+                            i = int(h, 16)     # convert our hex to an int...
+                            i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                            note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                            #note_on = [0x90, 0, 112] # channel 1, middle C, velocity 112
+                            midiout.send_message(note_on)
             elif "-" in line:
                 shell.SendKeys(line[-1])
     return currentlyGathered
@@ -190,15 +155,9 @@ def locationv_event(timeAve):
             #note_on = [int(i), int(midisig.split('.')[1][:-1]), min(128,int((timeAve/480)*128))] # channel 1, middle C, velocity 112
             midiout.send_message(note_on)
 
-    #make this into a vertical location, probably want to make the horizontal location how we want it first,
-                    # meaning, make a buffer on the edges
-          #-----------------------------BEGIN LOCATION EVENT-------------------------------------
-##                if usingLocation == 1:
-##                    note_on = [0xB0, 0, min(128,int((timeAverageX/600)*128))] # channel 1, middle C, velocity 112
-##                    midiout.send_message(note_on)
-         #-----------------------------END LOCATION EVENT-------------------------------------
 
 def speed_event(timeAveDist):
+    global boundingBoxArea, boundingBoxAreaAverage
     for line in userscroll.get(1.0,END).splitlines():
         if "Speed" in line:
             midisig = "0.0c"
@@ -209,7 +168,8 @@ def speed_event(timeAveDist):
                 h = '0xB0'        # this sets the default to CC
             i = int(h, 16)     # convert our hex to an int...
             i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selectedzz
-            note_on = [int(i), int(midisig.split('.')[1][:-1]), 128-min(128,int((timeAveDist-60)/2.6))] # channel 1, middle C, velocity 112
+            print("boundingBoxAreaAverage"+str(min(127,128-min(128,int(boundingBoxAreaAverage/625)))))
+            note_on = [int(i), int(midisig.split('.')[1][:-1]), min(127,128-min(128,int(boundingBoxAreaAverage/625)))] # channel 1, middle C, velocity 112
             #note_on = [0xB0, 1, 128-min(128,int((midisig-40)/3.2))] # channel 1, middle C, velocity 112
             midiout.send_message(note_on)
 
@@ -226,36 +186,14 @@ def peak_event(highX,highY):
             i = int(h, 16)     # convert our hex to an int...
             i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selectedzz
             if highY < 80:
-                print("highY" + str(highY))
+                #print("highY" + str(highY))
                 note_on = [int(i), min(128,int((highX/600)*128)), 127] # channel 1, middle C, velocity 112
                 note_off = [int(i), min(128,int((highX/600)*128)), 0] # channel 1, middle C, velocity 112
                 #note_on = [0x90, 0, 112] # channel 1, middle C, velocity 112
                 midiout.send_message(note_on)
-                #midiout.send_message(note_off)
-##            else:
-##                z = 0
-##                while z < 128:
-##                    note_off = [int(i), z, 0] # channel 1, middle C, velocity 112
-##                    midiout.send_message(note_off)
-##                    z = z+1
-                
 
 
-#THIS WILL PROBABLY NOT BE USED, IT WAS AN ATTEMPT TO MAKE A OCLOR DROPPER FOR SETTING THE TRACKING RANGE
-# mouse callback function
-##def pick_color(event,x,y,flags,param):
-##    if event == cv2.EVENT_LBUTTONDOWN:
-##        pixel = image_hsv[y,x]
-##        lower = (29, 86, 6)
-##        upper = (64, 255, 255)
-##        #you might want to adjust the ranges(+-10, etc):
-##        upper =  np.array([pixel[0] + 100, pixel[1] + 100, pixel[2] + 40])
-##        lower =  np.array([pixel[0] - 100, pixel[1] - 100, pixel[2] - 40])
-##        print(pixel, lower, upper)
-##        print("kkkkkk")
-##        image_mask = cv2.inRange(image_hsv,lower,upper)
-##        #cv2.imshow("mask",image_mask)
-##        return (lower, upper)
+
 arrivedInSquare = [0]*100 
 mostRecentSquare = [0]*100 
 def square_event(ballX, ballY): #the current quare format in the scrolledText is:Square#,midi,min time between triggers, required time to trigger
@@ -305,7 +243,7 @@ def square_event(ballX, ballY): #the current quare format in the scrolledText is
 
  
 # initialize the list of reference points and boolean indicating
-# whether cropping is being performed or not
+# whether a click and drag box is being performed or not
 refPt = []
 cropping = False
  
@@ -332,6 +270,7 @@ def mouse_click(event, x, y, flags, param):
 		# the cropping operation is finished
         refPt.append((x, y))
         cropping = False
+        
 videoname = "none"
 useVideo = False
 def video_dialog():
@@ -346,70 +285,13 @@ def start_camera():
     global useVideo
     useVideo = False
     run_camera()
-    
+
+boundingBoxArea = deque(maxlen=15)
+boundingBoxAreaAverage = 0
 def run_camera():
     	# grab references to the global variables
-    global refPt, cropping, videoName, useVideo
+    global refPt, cropping, videoName, useVideo, boundingBoxArea, boundingBoxAreaAverage
 
-#THIS WAS USED IN AN ATTEMPT TO MAKE A COLOR DROPPER FOR DETERMINING TRACKING COLOR
-##    global upper
-##    global lower
-##    
-##    hm = pyHook.HookManager()
-##    hm.SubscribeMouseAllButtonsDown(onclick)
-##    hm.HookMouse()
-
-    ##cv2.setMouseCallback('hsv', onclick)
-    ##pythoncom.PumpMessages()
-
-    # I do not know what this is, but it is probably important       
-    PY3 = sys.version_info[0] == 3
-    if PY3:
-        xrange = range
-
-    ##cv2.setMouseCallback('hsv', onclick)
-    
-    # construct the argument parse and parse the arguments
-    ap = argparse.ArgumentParser()
-    ap.add_argument("-v", "--video",
-            help="path to the (optional) video file")
-    ap.add_argument("-b", "--buffer", type=int, default=64,
-            help="max buffer size")
-    args = vars(ap.parse_args())
-    # define the lower and upper boundaries of the 
-    # ball in the HSV color space, then initialize the
-    # list of tracked points
-    
-##    #bright green
-##    lower = (29, 86, 6)
-##    upper = (64, 255, 255)
-
-    #white
-    lower = (0, 0, 175)
-    upper = (0, 0, 255)
-    pts = deque(maxlen=args["buffer"])
-     
-    # if a video path was not supplied, grab the reference
-    # to the webcam
-    if useVideo:
-        camera = cv2.VideoCapture(videoName)
-     
-    # otherwise, grab a reference to the video file
-    else:
-        camera = cv2.VideoCapture(0)
-
-    #----------------------FPS STUFF------------------
-     # this doesnt actually seem to be changing the FPS, or checking it either
-     #     maybe help: https://stackoverflow.com/questions/7039575/how-to-set-camera-fps-in-opencv-cv-cap-prop-fps-is-a-fake
-    #camera.set(cv2.cv2.CAP_PROP_FPS, 60)
-
-    #print(camera.get(cv2.cv2.CAP_PROP_FPS))
-
-    # this does get our dimensions though: 640,480
-    ##        print(camera.get(3))  # float
-    ##        print(camera.get(4)) # float
-    
-    #----------------------------------------------------
 
     # these are used to keep track of stuff in past frames
     averageXmem = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] #average circles X coordinate
@@ -422,48 +304,91 @@ def run_camera():
     currently_gathered = 1
 
 
+    ##cv2.setMouseCallback('hsv', onclick)
+    ##pythoncom.PumpMessages()
+
+    # I do not know what this is, but it is probably important       
+    PY3 = sys.version_info[0] == 3
+    if PY3:
+        xrange = range
+
+    ##cv2.setMouseCallback('hsv', onclick)
+
+        
+    #I DONT KNOW WHAT THIS IS, I DIDNT PUT IT HERE WHEN I ADDED THE VIDEO FEATURE,
+        #MAYBE IT COULD BE REMOVED?
+    # construct the argument parse and parse the arguments
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-v", "--video",
+            help="path to the (optional) video file")
+    ap.add_argument("-b", "--buffer", type=int, default=64,
+            help="max buffer size")
+    args = vars(ap.parse_args())
+    # define the lower and upper boundaries of the 
+    # ball in the HSV color space, then initialize the
+    # list of tracked points
+
+    #white
+    lower = (0, 0, 100)
+    upper = (0, 0, 255)
+    pts = deque(maxlen=args["buffer"])#I dont know what this is
+
+        
+##    #bright green
+##    lower = (29, 86, 6)
+##    upper = (64, 255, 255)
+
+     
+    # if the user clicked video then we will use the video
+    #    they picked in the filebrowser
+    if useVideo:
+        camera = cv2.VideoCapture(videoName)
+     
+    # otherwise, use the webcam
+    else:
+        camera = cv2.VideoCapture(0)
 
     while True: #this is the loop that shows us the video and trackers
 
         (grabbed, frame) = camera.read() # grab the current frame
+        
 
-##        print(camera.get(cv2.CAP_PROP_FRAME_WIDTH))   # float
-##        print(camera.get(cv2.CAP_PROP_FRAME_HEIGHT)) # float
         
         if args.get("video") and not grabbed:# if we are viewing a video and we did not grab a frame,
             break                            # then we have reached the end of the video
 
                 
 
-         
+         #I do not know why we resize the frame, this is just how it was in a tutorial,
+        #according to 'camera.get(cv2.CAP_PROP_FRAME_WIDTH)' it doesnt even change the width
         frame = imutils.resize(frame, width=600) # resize the frame,
         #frame = imutils.resize(frame, height=480) # resize the frame,
-        # blurred = cv2.GaussianBlur(frame, (11, 11), 0)  # blur it,
+        #this blur came in the tutorial commented out like this
+        #blurred = cv2.GaussianBlur(frame, (11, 11), 0)  # blur it,
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #and convert it to the HSV color space
 
-##FAILED ATTEMPTS TO MAKE THE UPPER AND LOWER DETERMINED BY A CLICK
-##        lower = (29, 86, 6)
-##        upper = (64, 255, 255)
-        #you might want to adjust the ranges(+-10, etc):
-##        upperRange =  np.array([pixel[0] + 100, pixel[1] + 100, pixel[2] + 40])
-##        lowerRange =  np.array([pixel[0] - 100, pixel[1] - 100, pixel[2] - 40])
-##-------------------------------------------------------------
+##        print(camera.get(cv2.CAP_PROP_FRAME_HEIGHT)) # float
+        #print(camera.get(cv2.CAP_PROP_FRAME_WIDTH))   # float
 
-        # construct a mask for the color "green", then perform
+        # construct a mask for the color set up above as upper and lower, then perform
         # a series of dilations and erosions to remove any small
-        # blobs left in the mask
-##        print("upper"+str(upper))
-##        print("lower"+str(lower))
+        # blobs left in the mask. IT WOULD BE COOL TO FIGURE OUT HOW TO SHOW THESE
+        #   MASKS IN SEPERATE WINDOWS
         mask = cv2.inRange(hsv, lower, upper)
-        mask = cv2.erode(mask, None, iterations=2)
-        mask = cv2.dilate(mask, None, iterations=2)
+        #I have tried changing the number of iterations, they started at 2
+        mask = cv2.dilate(mask, None, iterations=11)
+        mask = cv2.erode(mask, None, iterations=11)
+        mask = cv2.dilate(mask, None, iterations=20)
+        #mask = cv2.erode(mask, None, iterations=6)
         # find contours in the mask and initialize the current
         # (x, y) center of the ball
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
                 cv2.CHAIN_APPROX_SIMPLE)[-2]
+    
         center = None
         centerList = []
-        
+
+        cv2.imshow("Mask", mask)
         
 
 
@@ -474,8 +399,14 @@ def run_camera():
             averageY = 0
             averageR = 0
             cntcount = 0 #contour count
-            highestCntY = 500
+            highestCntY = 500 #this starts high so that anything will be less than it
             highestCntX = 0
+
+            #these, along with the highestCntY above are used to make a square around the
+            #       contours that have been seen, the area of this square is used for speed
+            leftestCntX = 700 #this starts high so that anything will be less than it
+            rightestCntX = 0
+            lowestCntY = 0
             
             cnts = sorted(cnts, key=cv2.contourArea) # sort the contours based on their area, 0 = largest
             for c in cnts:
@@ -487,9 +418,11 @@ def run_camera():
                                           #   distance between 2 of the contours
 
 
-
+                #THIS CONDITIONAL USED TO BE HIGHER, I LOWERED IT BECAUSE
+                #       I THOUGHT MAYBE IT WOULD HELP MAKE THE TRACKING LESS BAD,
+                #       BUT AT 1 IT IS POINTLESS
                 # only proceed if the radius meets a minimum size
-                if radius > 8:
+                if radius > 1:
                     cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2) #draw yellow rim circle
                     cv2.circle(frame, center, int(radius), (0, 0, 255), -1) # draw red center
                     averageX += int(x) # add on to our average, we will divide it later 
@@ -499,6 +432,12 @@ def run_camera():
                     if int(y) < highestCntY:
                         highestCntY = int(y)
                         highestCntX = int(x)
+                    if int(y) > lowestCntY:
+                        lowestCntY = int(y)
+                    if int(x) < leftestCntX:
+                        leftestCntX = int(x)
+                    if int(x) > rightestCntX:
+                        rightestCntX = int(x)                        
                     cntcount = cntcount + 1
                     square_event(int(x), int(y))
                     if cntcount > 2:
@@ -557,7 +496,13 @@ def run_camera():
                 locationv_event(timeAverageY)
                 speed_event(timeAverageLargestdist)
                 peak_event(highestCntX,highestCntY)
-          
+
+                cv2.rectangle(frame, (leftestCntX,highestCntY) , (rightestCntX,lowestCntY), (255,255,255), 2)
+     
+                boundingBoxArea.append((lowestCntY-highestCntY)*(rightestCntX-leftestCntX))
+                boundingBoxAreaAverage =(sum(boundingBoxArea)/len(boundingBoxArea))
+                #print(boundingBoxAreaAverage)
+                          
         # update the points queue
         pts.appendleft(center)
         # loop over the set of tracked points
@@ -573,6 +518,10 @@ def run_camera():
 ##            cv2.line(frame, pts[i - 1], pts[i], (255, 255, 255), thickness)
 
 		# draw a rectangle around the region of interest
+
+
+
+
 
         r = 0#this draws our squares for square_event()
         while r < int(len(refPt)/2):
@@ -664,7 +613,7 @@ def load_everything():
     with open(saveName.get()+"sqr.txt","r+") as g:
         for line in g:
             if h == 0:
-                print(line.split(",")[0])
+                #print(line.split(",")[0])
                 refPt = [(int(''.join(filter(str.isdigit, line.split(",")[0]))),int(''.join(filter(str.isdigit, line.split(",")[1]))))]
                 #refPt = [int(filter(str.isdigit, [line].split(",")[0]),int(filter(str.isdigit, [line].split(",")[1])]
                 h=h+1
@@ -771,6 +720,9 @@ del midiout
                 #   TODO:
                 #       -work on getting tracking a bit better, even if it doesnt have a color dropper
                 #       -in speed, if i gather the balls(but gather is off), the speed goes wildly slow, fix that
+                #           -speed is not good in general because the tracking is bad, once we get good tracking
+                #               then a bounding box around all trackers could be used to set the speed, the bigger
+                #               the box, the slower the pattern
                 #       -look for/follow any advice in the andrei messages
                 #           -it looks like this is ust switching out deque for my current memory system
                 #       -operation color dropper
@@ -784,7 +736,20 @@ del midiout
                 #       -if each event in the scrolledtext had a number before it, then that number could be referenced
                 #           by other actions instead of midi or note, they turn another action on or off, and also on
                 #           for a certain amount of time
-                
+
+                #OPERATION BETTER TRACKING:
+                #       -maybe, copy all the tracking stuff over to a different program
+                #           -this may not be necessary, just lean up and consolidate everything tracking related here,
+                #                   there isnt much
+                #       -if we show all the masks we are using, maybe we can get better tracking that way
+                #           -we had this somehow before but I do not know where, it was showing several different opencv screens all at
+                #               various levels of filtered or masked or whatever, if we can get that again then maybe it will help
+                #       -figure out what the stuff in this line we use above means:
+                #               cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+                #                                   cv2.CHAIN_APPROX_SIMPLE)[-2]
+                #       -learn about cv masks, maybe they could be used differently above
+                #
+                        
                 #FOR SQUARE_EVENT:
                 #make a required amount of time in order to trigger a square,
                 #       this will be more useful once we get better tracking set up, even with the stuttery
@@ -836,5 +801,87 @@ del midiout
                  #          its liklihoods that it is at those various places.
 
 
+##IF THE REFERNECE TO ONCLICK DOWN IN CAMERA IS BEING USED, THEN THIS STUFF
+##      WILL HAPPEN, IT WAS MY ATTEMPT AT MAKING A COLOR DROPPPER FOR DETERMING
+##      THE CV COLOR TRACK RANGE. DIDNT WORK, THE COLORS PICKED FROM THE DROPPER
+##      JUST DONT AT ALL MATCH UP WITH THTE RANGE THAT WOULD BE NECESSARY TO IDENTIFY THAT COLOR
+##    #bright green
+##lower = (29, 86, 6)
+##upper = (64, 255, 255)
+##
+##def onclick(event):
+##    global upper
+##    global lower
+##    print("lll")
+##    x, y = pyautogui.position()
+##    pixelColor = pyautogui.screenshot().getpixel((x, y))
+##    ss = 'X: ' + str(x).rjust(4) + ' Y: ' + str(y).rjust(4)
+##    ss += ' RGB: (' + str(pixelColor[0]).rjust(3)
+##    ss += ', ' + str(pixelColor[1]).rjust(3)
+##    ss += ', ' + str(pixelColor[2]).rjust(3) + ')'
+##    print(ss)
+##    #pixel = image_hsv[y,x]
+##    colorsys.rgb_to_hsv(pixelColor[0], pixelColor[1], pixelColor[2])
+####    lowerColor = np.uint8([[[0, 0, 0]]])
+####    upperColor = np.uint8([[[74, 74, 83]]])
+##    hsv_lower = cv2.cvtColor(lower, cv2.COLOR_BGR2HSV)
+##    hsv_upper = cv2.cvtColor(upper, cv2.COLOR_BGR2HSV)
+##    #you might want to adjust the ranges(+-10, etc):
+##    upper =  np.array([hsv_upper[0] + 20, 255, 255])
+##    lower =  np.array([max(1,hsv_lower[0] - 20), max(1,hsv_lower[1] - 10), max(1,hsv_lower[2] - 40)])
+##    print("upper!!!!!"+str(upper))
+##    print("lower!!!!!"+str(lower))
+##    print(lower, upper)
+####    print("rrrrr")
+##    #image_mask = cv2.inRange(image_hsv,lower,upper)
+##    #cv2.imshow("mask",image_mask)
+##    #return (lower, upper)
+####    print(surface.get_at(pygame.mouse.get_pos()))
+##    return True
+ 
 
+##FAILED ATTEMPTS TO MAKE THE UPPER AND LOWER DETERMINED BY A CLICK
+##        lower = (29, 86, 6)
+##        upper = (64, 255, 255)
+        #you might want to adjust the ranges(+-10, etc):
+##        upperRange =  np.array([pixel[0] + 100, pixel[1] + 100, pixel[2] + 40])
+##        lowerRange =  np.array([pixel[0] - 100, pixel[1] - 100, pixel[2] - 40])
+##-------------------------------------------------------------
+
+#THIS WAS USED IN AN ATTEMPT TO MAKE A COLOR DROPPER FOR DETERMINING TRACKING COLOR
+##    global upper
+##    global lower
+##    
+##    hm = pyHook.HookManager()
+##    hm.SubscribeMouseAllButtonsDown(onclick)
+##    hm.HookMouse()
+
+#THIS WILL PROBABLY NOT BE USED, IT WAS AN ATTEMPT TO MAKE A COLOR DROPPER FOR SETTING THE TRACKING RANGE
+# mouse callback function
+##def pick_color(event,x,y,flags,param):
+##    if event == cv2.EVENT_LBUTTONDOWN:
+##        pixel = image_hsv[y,x]
+##        lower = (29, 86, 6)
+##        upper = (64, 255, 255)
+##        #you might want to adjust the ranges(+-10, etc):
+##        upper =  np.array([pixel[0] + 100, pixel[1] + 100, pixel[2] + 40])
+##        lower =  np.array([pixel[0] - 100, pixel[1] - 100, pixel[2] - 40])
+##        print(pixel, lower, upper)
+##        print("kkkkkk")
+##        image_mask = cv2.inRange(image_hsv,lower,upper)
+##        #cv2.imshow("mask",image_mask)
+##        return (lower, upper)                 
+
+    #----------------------FPS STUFF------------------
+     # this doesnt actually seem to be changing the FPS, or checking it either
+     #     maybe help: https://stackoverflow.com/questions/7039575/how-to-set-camera-fps-in-opencv-cv-cap-prop-fps-is-a-fake
+    #camera.set(cv2.cv2.CAP_PROP_FPS, 60)
+
+    #print(camera.get(cv2.cv2.CAP_PROP_FPS))
+
+    # this does get our dimensions though: 640,480
+    ##        print(camera.get(3))  # float
+    ##        print(camera.get(4)) # float
+    
+    #----------------------------------------------------
 
