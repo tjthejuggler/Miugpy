@@ -53,7 +53,7 @@ mainframe.pack(pady = 50, padx = 50)
 
 
 
-def gather_event(timeAveDist,curGath):
+def gather_event(timeAveDist,curGath,totPer):
     global boundingBoxArea, boundingBoxAreaAverage
     currentlyGathered = curGath
     for line in userscroll.get(1.0,END).splitlines():
@@ -62,33 +62,24 @@ def gather_event(timeAveDist,curGath):
             if "." in line: #this way we know it is midi
                 midisig = "0.0n"
                 midisig = line.split(',')[1]
-                #if timeAveDist < 5:
-                if len(boundingBoxArea) > 0:#IT TAKES LIKE A SECOND FOR GATHER/UNGATHER TO TRIGGER AND I DO NOT KNOW WHY
-                    if abs(boundingBoxAreaAverage - boundingBoxArea[-1]) < boundingBoxAreaAverage/1.2 or boundingBoxArea[-1] < 1:
-
-                        #print("boundingBoxAreaAverage"+str(boundingBoxAreaAverage))
-                        #print("boundingBoxArea[-1]"+str(boundingBoxArea[-1]))
-                        if currentlyGathered == 0:
-                            currentlyGathered = 1
-        ##                    print("gather3")
-                            
-                            if midisig[-1] == 'n': # this checks to see if we
-                                h = '0x90'        # since we are using notes, we change our hex
-                            else:
-                                h = '0xB0'        # this sets the default to CC
-                            i = int(h, 16)     # convert our hex to an int...
-                            i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
-                            note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
-                            midiout.send_message(note_on)
+                #if timeAveDist < 2:
+                if currentlyGathered == 0:
+                    if totPer < 400:
+                        currentlyGathered = 1
+                        ##                    print("gather3")                        
+                        if midisig[-1] == 'n': # this checks to see if we
+                            h = '0x90'        # since we are using notes, we change our hex
+                        else:
+                            h = '0xB0'        # this sets the default to CC
+                        i = int(h, 16)     # convert our hex to an int...
+                        i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                        note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                        midiout.send_message(note_on)
             elif "-" in line:
                 shell.SendKeys(line[-1])
     return currentlyGathered
 
-#def hold_event(highX,highY):
-    #this may work just by checking to see if there was a tracker consistently in the same section of the upper part of the screen for a
-    #   certain number of frames. We could use 3 sections like, left, middle, right
-
-def ungather_event(timeAveDist,curGath):
+def ungather_event(timeAveDist,curGath,totPer):
     currentlyGathered = curGath
     for line in userscroll.get(1.0,END).splitlines():
         if "Ungather" in line:
@@ -96,23 +87,21 @@ def ungather_event(timeAveDist,curGath):
             if "." in line: #this way we know it is midi
                 midisig = "0.0n"
                 midisig = line.split(',')[1]
-                if len(boundingBoxArea) > 0:                
-                    if abs(boundingBoxAreaAverage - boundingBoxArea[-1]) > boundingBoxAreaAverage/2 or boundingBoxArea[-1] > 29:
-                    #if timeAveDist > 5:
-        ##                print("ungather1.5")
-        ##                print("curGath"+str(currentlyGathered))
-                        if currentlyGathered == 1:
-                            currentlyGathered = 0
-        ##                    print("ungather2")
-                            if midisig[-1] == 'n': # this checks to see if we
-                                h = '0x90'        # since we are using notes, we change our hex
-                            else:
-                                h = '0xB0'        # this sets the default to CC
-                            i = int(h, 16)     # convert our hex to an int...
-                            i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
-                            note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
-                            #note_on = [0x90, 0, 112] # channel 1, middle C, velocity 112
-                            midiout.send_message(note_on)
+
+                if currentlyGathered == 1:
+                    if totPer > 400: #if the total perimiter is large enough then there is no way they are gathered, unless
+                        #                   they are really close to the camera i guess
+                        currentlyGathered = 0
+    ##                    print("ungather2")
+                        if midisig[-1] == 'n': # this checks to see if we
+                            h = '0x90'        # since we are using notes, we change our hex
+                        else:
+                            h = '0xB0'        # this sets the default to CC
+                        i = int(h, 16)     # convert our hex to an int...
+                        i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                        note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                        #note_on = [0x90, 0, 112] # channel 1, middle C, velocity 112
+                        midiout.send_message(note_on)
             elif "-" in line:
                 shell.SendKeys(line[-1])
     return currentlyGathered
@@ -168,7 +157,7 @@ def speed_event(timeAveDist):
                 h = '0xB0'        # this sets the default to CC
             i = int(h, 16)     # convert our hex to an int...
             i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selectedzz
-            print("boundingBoxAreaAverage"+str(min(127,128-min(128,int(boundingBoxAreaAverage/625)))))
+            #print("boundingBoxAreaAverage"+str(min(127,128-min(128,int(boundingBoxAreaAverage/625)))))
             note_on = [int(i), int(midisig.split('.')[1][:-1]), min(127,128-min(128,int(boundingBoxAreaAverage/625)))] # channel 1, middle C, velocity 112
             #note_on = [0xB0, 1, 128-min(128,int((midisig-40)/3.2))] # channel 1, middle C, velocity 112
             midiout.send_message(note_on)
@@ -196,49 +185,55 @@ def peak_event(highX,highY):
 
 arrivedInSquare = [0]*100 
 mostRecentSquare = [0]*100 
-def square_event(ballX, ballY): #the current quare format in the scrolledText is:Square#,midi,min time between triggers, required time to trigger
+def square_event(ballPos): #the current quare format in the scrolledText is:Square#,midi,min time between triggers, required time to trigger
+    #print("checking square")
     for line in userscroll.get(1.0,END).splitlines():     #Example: Square0,0.5n,500,0 - can be thrown through square and only send 1 signal
                                                           #Example: Square0,0.5n,500,600 - can be held in a square to cause trigger, but
-                                                                    #throwing through the square wont cause a trigger
+                                                                #throwing through the square wont cause a trigger
         r=0
         while r < int(len(refPt)/2):
+            noneInBox = True
             if str("Square"+str(r)) in line:
-                if ballX > refPt[r*2][0]:
-                    if ballX < refPt[(r*2)+1][0]:
-                        if ballY > refPt[r*2][1]:
-                            if ballY < refPt[(r*2)+1][1]:
-                                midisig = "0.0n"
-                                midisig = line.split(',')[1]
-                                millisSinceSquare = int(round(time.time() * 1000)) - mostRecentSquare[r]
-                                if millisSinceSquare > int(''.join(filter(str.isdigit, line.split(",")[2]))):
-                                    if arrivedInSquare[r] > 1:
-                                        if int(round(time.time() * 1000)) - arrivedInSquare[r] > int(''.join(filter(str.isdigit, line.split(",")[3]))):
-                                            if midisig[-1] == 'n': # this checks to see if we
-                                                h = '0x90'        # since we are using notes, we change our hex
-                                            else:
-                                                h = '0xB0'       # this sets the default to CC
-                                            i = int(h, 16)     # convert our hex to an int...
-                                            i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
-                                            mostRecentSquare[r] = int(round(time.time() * 1000))
-                                            note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
-                                            midiout.send_message(note_on)
-                                            arrivedInSquare[r] = 0
-                                        else:
-                                            print("arrivedInSquare="+str(int(round(time.time() * 1000)) - arrivedInSquare[r]))
-
+                
+                for b in ballPos:
+                    if b[0] > refPt[r*2][0] and b[0] < refPt[(r*2)+1][0] and b[1] > refPt[r*2][1] and b[1] < refPt[(r*2)+1][1]:
+                        noneInBox = False
+                        print("insquare"+str(r))
+                        midisig = "0.0n"
+                        midisig = line.split(',')[1]
+                        millisSinceSquare = int(round(time.time() * 1000)) - mostRecentSquare[r]
+                        if millisSinceSquare > int(''.join(filter(str.isdigit, line.split(",")[2]))):
+                            if arrivedInSquare[r] > 1:# if it is more than 1 then we check to see if it is long enough to trigger
+                                if int(round(time.time() * 1000)) - arrivedInSquare[r] > int(''.join(filter(str.isdigit, line.split(",")[3]))):
+                                    if midisig[-1] == 'n':
+                                        h = '0x90'        
                                     else:
-                                        arrivedInSquare[r] = int(round(time.time() * 1000))
+                                        h = '0xB0'
+                                    #noneInBox = False #if this is false then we do not restart our counter to 0
+                                    i = int(h, 16)     # convert our hex to an int...
+                                    i += int(midisig.split('.')[0]) # ...add on to it based on which channel is selected
+                                    mostRecentSquare[r] = int(round(time.time() * 1000))
+                                    note_on = [int(i), int(midisig.split('.')[1][:-1]), 112] # channel 1, middle C, velocity 112
+                                    midiout.send_message(note_on)
+                                    arrivedInSquare[r] = 0
+                                    print("midi sent")
                                 else:
-                                    arrivedInSquare[r] = 0                                        
-                            else:
-                                arrivedInSquare[r] = 0
-                        else:
-                            arrivedInSquare[r] = 0
-                    else:
-                        arrivedInSquare[r] = 0
-                else:
+                                    #noneInBox = False
+                                    print("needs longer="+str(int(round(time.time() * 1000)) - arrivedInSquare[r]))
+
+                            else:#if it is not more than 1 then it needs to be set because it means that it has just now bee seen
+                                print("timeRecorded"+str(r))
+                                arrivedInSquare[r] = int(round(time.time() * 1000))
+                                #noneInBox = False
+                                #IF I STICK A BALL QUICKLY IN SQUARE 1, THEN I TAKE IT OUT, SOMETHING KEEPS COUNTING BECAUSE
+                                #       THEN WHEN I QUICLY STICK IT IN AGAIN IT TRIGGERS THE MIDI.  
+
+                if noneInBox is True:
+                    print("noneInBox")
                     arrivedInSquare[r] = 0
             r=r+1
+
+            
                     
 
  
@@ -407,22 +402,26 @@ def run_camera():
             leftestCntX = 700 #this starts high so that anything will be less than it
             rightestCntX = 0
             lowestCntY = 0
-            
+
+            ballPositions = [(0, 0)]
+            totalPerimeter = 0
             cnts = sorted(cnts, key=cv2.contourArea) # sort the contours based on their area, 0 = largest
             for c in cnts:
                 c = cnts[cntcount] #based on which time through the loop we are, we get the largest contour that we havn't already used
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
+                totalPerimeter += cv2.arcLength(c,True)
+                print(totalPerimeter)
                 M = cv2.moments(c)
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 centerList.append(center) #we are keeping track of all the centers coordinates so we can find the largest
                                           #   distance between 2 of the contours
 
-
+                    
                 #THIS CONDITIONAL USED TO BE HIGHER, I LOWERED IT BECAUSE
                 #       I THOUGHT MAYBE IT WOULD HELP MAKE THE TRACKING LESS BAD,
                 #       BUT AT 1 IT IS POINTLESS
                 # only proceed if the radius meets a minimum size
-                if radius > 1:
+                if radius > 8:
                     cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2) #draw yellow rim circle
                     cv2.circle(frame, center, int(radius), (0, 0, 255), -1) # draw red center
                     averageX += int(x) # add on to our average, we will divide it later 
@@ -432,14 +431,14 @@ def run_camera():
                     if int(y) < highestCntY:
                         highestCntY = int(y)
                         highestCntX = int(x)
-                    if int(y) > lowestCntY:
+                    if int(y) > lowestCntY:#theses are used to keep track of the bounding box of all the balls
                         lowestCntY = int(y)
                     if int(x) < leftestCntX:
                         leftestCntX = int(x)
                     if int(x) > rightestCntX:
                         rightestCntX = int(x)                        
-                    cntcount = cntcount + 1
-                    square_event(int(x), int(y))
+                    cntcount = cntcount + 1                    
+                    ballPositions.append((x,y))
                     if cntcount > 2:
                         break
                     
@@ -490,13 +489,16 @@ def run_camera():
                     #print("time:"+str(timeAverageLargestdist))
                     #print("DIST:"+str(88-min(128,int(timeAverageLargestdist/3))))
 
-                currently_gathered = gather_event(timeAverageLargestdist,currently_gathered)
-                currently_gathered = ungather_event(timeAverageLargestdist,currently_gathered)            
+                if cntcount == 1:
+                    currently_gathered = gather_event(timeAverageLargestdist,currently_gathered, totalPerimeter)
+                currently_gathered = ungather_event(timeAverageLargestdist,currently_gathered, totalPerimeter)            
+                
                 locationh_event(timeAverageX)
                 locationv_event(timeAverageY)
                 speed_event(timeAverageLargestdist)
                 peak_event(highestCntX,highestCntY)
-
+                square_event(ballPositions)
+                
                 cv2.rectangle(frame, (leftestCntX,highestCntY) , (rightestCntX,lowestCntY), (255,255,255), 2)
      
                 boundingBoxArea.append((lowestCntY-highestCntY)*(rightestCntX-leftestCntX))
@@ -718,13 +720,7 @@ del midiout
 
 
                 #   TODO:
-                #       -work on getting tracking a bit better, even if it doesnt have a color dropper
-                #       -in speed, if i gather the balls(but gather is off), the speed goes wildly slow, fix that
-                #           -speed is not good in general because the tracking is bad, once we get good tracking
-                #               then a bounding box around all trackers could be used to set the speed, the bigger
-                #               the box, the slower the pattern
-                #       -look for/follow any advice in the andrei messages
-                #           -it looks like this is ust switching out deque for my current memory system
+                #       -speed large size could somehow be set by the largest pattern that that speed has seen
                 #       -operation color dropper
                 #           -MIGHT NOT BE WORTH IT TO POUR TOO MUCH TIME INTO THIS SINCE IT PROBABLY WONT BE NEEDED IN
                 #               EVENTUAL PROJECT
@@ -736,6 +732,8 @@ del midiout
                 #       -if each event in the scrolledtext had a number before it, then that number could be referenced
                 #           by other actions instead of midi or note, they turn another action on or off, and also on
                 #           for a certain amount of time
+                #           -going along with this idea is another window that displays which of the events are currently active,
+                #               maybe with a crossout or something so that we know that they are available, just unactive 
 
                 #OPERATION BETTER TRACKING:
                 #       -maybe, copy all the tracking stuff over to a different program
