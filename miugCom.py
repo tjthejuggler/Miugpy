@@ -15,13 +15,11 @@ import sys # for tracking balls
 from tkinter import messagebox
 import pyautogui
 import time
-import pyHook
 import pythoncom
-import win32com.client
 from tkinter.filedialog import askopenfilename
 from scipy import ndimage
 import matplotlib.pyplot as plt
-shell = win32com.client.Dispatch("WScript.Shell")
+
 midiout = rtmidi.MidiOut()
 available_ports = midiout.get_ports()
 if available_ports:
@@ -45,6 +43,7 @@ def run_camera():
     all_cx = []
     all_cy = []
     frames = 0
+    start = time.time()
     while True and frames < 200: 
         (grabbed, frame) = camera.read()
         frames = frames + 1
@@ -85,11 +84,14 @@ def run_camera():
         if key == ord("q"):
             print("b2")
             break
+    end = time.time()
+    fps = 200/(end-start)
+    print("fps: "+str(fps))
     camera.release()
     cv2.destroyAllWindows()
     line1 = plt.plot(all_cx, label="x")
     line2 = plt.plot(all_cy, label="y")
-    plt.legend([line1, line2],['X', 'Y'])
+    #plt.legend([line1, line2],['X', 'Y'])
     plt.show()
 
 run_camera()
