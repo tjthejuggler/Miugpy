@@ -19,6 +19,13 @@ import pythoncom
 from tkinter.filedialog import askopenfilename
 from scipy import ndimage
 import matplotlib.pyplot as plt
+import pygame as pg
+
+pg.mixer.init()
+pg.init()
+pg.mixer.set_num_channels(19)
+sound = pg.mixer.Sound(pg.mixer.Sound("/Users/Thursday/..miugCom/tada.wav"))
+
 
 midiout = rtmidi.MidiOut()
 available_ports = midiout.get_ports()
@@ -26,8 +33,10 @@ if available_ports:
     midiout.open_port(1)
 else:
     midiout.open_virtual_port("My virtual output")
+
 root = Tk() 
 root.title("Miug")
+
 def run_camera():    
     PY3 = sys.version_info[0] == 3
     if PY3:
@@ -44,10 +53,15 @@ def run_camera():
     all_cy = []
     frames = 0
     start = time.time()
+    lastDifY = 0
+    thisDifY = 0
+    lastCy = 0
+    secondLastY = 0
+    num_high = 0
     while True and frames < 200: 
         (grabbed, frame) = camera.read()
         frames = frames + 1
-        print("frame:" + str(frames))
+        #print("frame:" + str(frames))
         if args.get("video") and not grabbed:
             break                            
         frame = imutils.resize(frame, width=600)
@@ -58,7 +72,7 @@ def run_camera():
         ret,thresh = cv2.threshold(framegray,127,255,0)
         #thresh = cv2.adaptiveThreshold(framegray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
         im2, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        
+
         if contours:
             cnt = contours[0]
             M = cv2.moments(cnt)
@@ -68,7 +82,22 @@ def run_camera():
                 cy = int(M['m01']/M['m00'])
                 all_cx.append(cx)
                 all_cy.append(cy)
-                print("cx : "+str(cx)+",cy :"+str(cy))
+                #print("cx : "+str(cx)+",cy :"+str(cy))
+                lastDifY = thisDifY
+                thisDifY = cy-lastCy
+                #secondLastY = lastCy 
+                lastCy = cy
+                #print(str(lastDifY) + " " + str(thisDifY) )
+                if (lastDifY < 0 and (thisDifY > 0 or abs(thisDifY) < .5)) and (abs(thisDifY) > 20 or abs(lastDifY) > 20):
+                    num_high = num_high + 1
+                    print("hi " + str(num_high))
+                    note_on = [0x90, 60, 127] # channel 1, middle C, velocity 112
+                    midiout.send_message(note_on)
+                    note_on = [0x80, 60, 127] # channel 1, middle C, velocity 112
+                    midiout.send_message(note_on)
+                    #sound.play()
+
+
 
 
         for i in xrange(1, len(pts)):
