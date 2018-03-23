@@ -1,3 +1,8 @@
+This repo is no longer being updated, here is the new one:
+https://github.com/tjthejuggler/midijuggler
+
+
+
 Miug allows the user to send midi signals or keypresses based on what they do with juggling balls.
 
 Required software:
