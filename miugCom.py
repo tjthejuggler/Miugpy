@@ -77,17 +77,22 @@ def run_camera():
     lastCy = 0
     secondLastY = 0
     num_high = 0
-    windowX = []
-    windowY = []
-    while True and frames < 2000: 
+    windowLength = 20
+    windowX = deque(maxlen=windowLength)
+    windowY = deque(maxlen=windowLength)
+    #windowX = []
+    #windowX = []
+    corrcoefList = []
+    appends = 0
+    canCorr = False
+    while True and frames < 1000:         
         #(grabbed, frame) = camera.read()
         frame = vs.read()
         frames = frames + 1
         #print("frame:" + str(frames))
         if args.get("video") and not grabbed:
             break                            
-        frame = imutils.resize(frame, width=600)
-        
+        frame = imutils.resize(frame, width=600)        
         #grey = np.zeros((frame.shape[0], frame.shape[1])) # init 2D numpy array
         framegray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
 
@@ -109,16 +114,13 @@ def run_camera():
                 thisDifY = cy-lastCy
                 #secondLastY = lastCy 
                 lastCy = cy
-                if windowX < 10:
-                    windowX.append(cx)
-                else:
-                    windowX.push(cx)
-
-                if windowY < 10:
-                    windowY.append(cy)
-                else:
-                    windowY.push(cy)            
-               
+                appends = appends+1
+                windowX.append(cx)
+                windowY.append(cy)
+                if appends > windowLength:
+                    #print("windowX :"+str(windowX))
+                    #print("windowY :"+str(windowY))
+                    corrcoefList.append(np.corrcoef(windowX,windowY)[0,1])
 
                 if (lastDifY < 0 and (thisDifY > 0 or abs(thisDifY) < .5)) and (abs(thisDifY) > 10 or abs(lastDifY) > 10):
                     num_high = num_high + 1
@@ -132,7 +134,7 @@ def run_camera():
         for i in xrange(1, len(pts)):
             if pts[i - 1] is None or pts[i] is None:
                 continue
-        #cv2.imshow("Frame", frame)
+        cv2.imshow("Frame", frame)
         fps.update()
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
@@ -147,19 +149,25 @@ def run_camera():
     cv2.destroyAllWindows()
     line1 = plt.plot(all_cx, label="x")
     line2 = plt.plot(all_cy, label="y")
-
+    plt.figure()
+    line1a = plt.plot(corrcoefList, label="c")
+    #print(corrcoefList)
+    plt.figure()
+    #print(corrcoefList)
     #plt.legend([line1, line2],['X', 'Y'])
     plt.show()
     vs.stop()
-     
+    
     #cv2.destroyAllWindows()
     camera.release()
-    spectrogram = np.abs(librosa.stft(np.array(all_cy)))
-    plt.imshow(spectrogram)
-    print(spectrogram)
+    #spectrogram = np.abs(librosa.stft(np.array(all_cy)))
+    #plt.imshow(spectrogram)
+    #print(spectrogram)
     #librosa.display.specshow(librosa.amplitude_to_db(spectrogram))
 run_camera()
 
+#change label of bottom plot line 
+#combine both plots with subplot
 
 #LEARNINGS:
 #   not having this line ' frame = imutils.resize(frame, width=600) '  gives us wildly different fps readings
@@ -168,3 +176,58 @@ run_camera()
 #   get the numpy corrcoef between my 2 windows, it should give me a list of %s as long as the number of frames
 #   next up is figuring out how to seperate my screen into 2 sides and then doing the whole
 #   process on either side so that I end up x1,y1 and x2,y2, from there i get 6 correlations
+
+
+
+'''if len(windowX) < 10:
+        windowX.append(cx)
+        else:
+        i=0
+        while i < 9:
+            windowX[i] = windowX[i+1]
+            i = i + 1
+        windowX[9] = cx
+
+        if len(windowY) < 10:
+        windowY.append(cy)
+        else:
+        z=0
+        while z < 9:
+            windowY[z] =windowY[z+1]
+            z = z + 1
+        windowY[9] = cy
+        canCorr = True                  
+
+        if len(windowX) > 9:
+        xa = np.array([windowX[0],windowX[1],windowX[2],windowX[3],windowX[4],windowX[5],windowX[6],windowX[7],windowX[8],windowX[9]])
+        ya = np.array([windowY[0],windowY[1],windowY[2],windowY[3],windowY[4],windowY[5],windowY[6],windowY[7],windowY[8],windowY[9]])
+
+
+
+
+
+                averageColor = 0
+        i=0
+        k=0
+        while i < 100:
+            while k < 100:
+                averageColor= averageColor+frame[i+250][k+190][2]                
+                k=k+1
+            i=i+1
+
+        averageColor = averageColor/1000
+
+
+        print(frame[i+250][k+190][2])
+
+
+        greenLower = (20, 30, 6)
+        greenUpper = (64, 200, 200)
+        
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        mask = cv2.inRange(hsv, greenLower, greenUpper)
+        mask = cv2.erode(mask, None, iterations=2)
+        mask = cv2.dilate(mask, None, iterations=2)
+
+        cv2.rectangle(frame, (240,180) , (360,300), (255,255,255), 2)'''
